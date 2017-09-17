@@ -5,9 +5,9 @@ if(F){
   #wget -c ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE48nnn/GSE48213/suppl/GSE48213_RAW.tar
   #tar -xf GSE48213_RAW.tar
   #gzip -d *.gz
-  ## 首先在GSE48213_RAW目录里面生成tmp.txt文件，使用shell脚本：
+  ## 首先在GSE48213_RAW目录里面生成tmp.txt文件，使用shell脚本�?
   awk '{print FILENAME"\t"$0}' * |grep -v EnsEMBL_Gene_ID >tmp.txt
-  ## 然后把tmp.txt导入R语言里面用reshape2处理即可！
+  ## 然后把tmp.txt导入R语言里面用reshape2处理即可�?
   a=read.table('GSE48213_RAW/tmp.txt',sep = '\t',stringsAsFactors = F)
   library(reshape2)
   fpkm <- dcast(a,formula = V2~V1)
@@ -24,7 +24,7 @@ if(F){
              )
   save(fpkm,datTraits,file = 'GSE48213-wgcna-input.RData')
 }
-
+load('GSE48213-wgcna-input.RData')
 library(WGCNA)
 ## step 1 :
 if(T){
@@ -33,12 +33,12 @@ if(T){
   head(datTraits)
   
   RNAseq_voom <- fpkm 
-  ## 因为WGCNA针对的是基因进行聚类，而一般我们的聚类是针对样本用hclust即可，所以这个时候需要转置。
+  ## 因为WGCNA针对的是基因进行聚类，而一般我们的聚类是针对样本用hclust即可，所以这个时候需要转置�?
   WGCNA_matrix = t(RNAseq_voom[order(apply(RNAseq_voom,1,mad), decreasing = T)[1:5000],])
   datExpr0 <- WGCNA_matrix  ## top 5000 mad genes
   datExpr <- datExpr0 
   
-  ## 下面主要是为了防止临床表型与样本名字对不上
+  ## 下面主要是为了防止临床表型与样本名字对不�?
   sampleNames = rownames(datExpr);
   traitRows = match(sampleNames, datTraits$gsm)
   rownames(datTraits) = datTraits[traitRows, 1]
@@ -111,10 +111,10 @@ if(T){
 }
 
 if(F){
-  #明确样本数和基因数
+  #明确样本数和基因�?
   nGenes = ncol(datExpr)
   nSamples = nrow(datExpr)
-  #首先针对样本做个系统聚类树
+  #首先针对样本做个系统聚类�?
   datExpr_tree<-hclust(dist(datExpr), method = "average")
   par(mar = c(0,5,2,0))
   plot(datExpr_tree, main = "Sample clustering", sub="", xlab="", cex.lab = 2, 
@@ -123,10 +123,10 @@ if(F){
   #针对前面构造的样品矩阵添加对应颜色
   sample_colors <- numbers2colors(as.numeric(factor(datTraits$subtype)), 
                                   colors = c("white","blue","red","green"),signed = FALSE)
-  ## 这个给样品添加对应颜色的代码需要自行修改以适应自己的数据分析项目。
+  ## 这个给样品添加对应颜色的代码需要自行修改以适应自己的数据分析项目�?
   #  sample_colors <- numbers2colors( datTraits ,signed = FALSE)
-  ## 如果样品有多种分类情况，而且 datTraits 里面都是分类信息，那么可以直接用上面代码，当然，这样给的颜色不明显，意义不大。
-  #构造10个样品的系统聚类树及性状热图
+  ## 如果样品有多种分类情况，而且 datTraits 里面都是分类信息，那么可以直接用上面代码，当然，这样给的颜色不明显，意义不大�?
+  #构�?10个样品的系统聚类树及性状热图
   par(mar = c(1,4,3,1),cex=0.8)
   
   png("sample-subtype-cluster.png",width = 800,height = 600)
@@ -142,12 +142,14 @@ if(F){
 ## step 5 
 ## 这一步主要是针对于连续变量，如果是分类变量，需要转换成连续变量方可使用
 if(T){
+  nGenes = ncol(datExpr)
+  nSamples = nrow(datExpr)
   design=model.matrix(~0+ datTraits$subtype)
   colnames(design)=levels(datTraits$subtype)
   moduleColors <- labels2colors(net$colors)
   # Recalculate MEs with color labels
   MEs0 = moduleEigengenes(datExpr, moduleColors)$eigengenes
-  MEs = orderMEs(MEs0); ##不同颜色的模块的ME值矩阵(样本vs模块)
+  MEs = orderMEs(MEs0); ##不同颜色的模块的ME值矩�?(样本vs模块)
   moduleTraitCor = cor(MEs, design , use = "p");
   moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
   
@@ -180,8 +182,8 @@ if(T){
   # names (colors) of the modules
   modNames = substring(names(MEs), 3)
   geneModuleMembership = as.data.frame(cor(datExpr, MEs, use = "p"));
-  ## 算出每个模块跟基因的皮尔森相关系数矩阵
-  ## MEs是每个模块在每个样本里面的值
+  ## 算出每个模块跟基因的皮尔森相关系数矩�?
+  ## MEs是每个模块在每个样本里面的�?
   ## datExpr是每个基因在每个样本的表达量
   MMPvalue = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership), nSamples));
   names(geneModuleMembership) = paste("MM", modNames, sep="");
@@ -190,7 +192,7 @@ if(T){
   
   
   ## 只有连续型性状才能只有计算
-  ## 这里把是否属于 Luminal 表型这个变量用0,1进行数值化。
+  ## 这里把是否属�? Luminal 表型这个变量�?0,1进行数值化�?
   Luminal = as.data.frame(design[,3]);
   names(Luminal) = "Luminal"
   geneTraitSignificance = as.data.frame(cor(datExpr, Luminal, use = "p"));
@@ -246,7 +248,7 @@ if(T){
   # Recalculate module eigengenes
   MEs = moduleEigengenes(datExpr, moduleColors)$eigengenes
   ## 只有连续型性状才能只有计算
-  ## 这里把是否属于 Luminal 表型这个变量用0,1进行数值化。
+  ## 这里把是否属�? Luminal 表型这个变量�?0,1进行数值化�?
   Luminal = as.data.frame(design[,3]);
   names(Luminal) = "Luminal"
   # Add the weight to existing module eigengenes
@@ -270,7 +272,7 @@ if(T){
   dev.off()
   # Plot the heatmap matrix (note: this plot will overwrite the dendrogram plot)
   par(cex = 1.0)
-  ## 性状与模块热图
+  ## 性状与模块热�?
   
   png("step7-Eigengene-adjacency-heatmap.png",width = 800,height = 600)
   plotEigengeneNetworks(MET, "Eigengene adjacency heatmap", marHeatmap = c(3,4,2,2),
@@ -284,7 +286,7 @@ if(T){
   # Select module
   module = "brown";
   # Select module probes
-  probes = colnames(datExpr) ## 我们例子里面的probe就是基因名
+  probes = colnames(datExpr) ## 我们例子里面的probe就是基因�?
   inModule = (moduleColors==module);
   modProbes = probes[inModule]; 
 }
@@ -296,14 +298,14 @@ if(T){
   # Select module
   module = "brown";
   # Select module probes
-  probes = colnames(datExpr) ## 我们例子里面的probe就是基因名
+  probes = colnames(datExpr) ## 我们例子里面的probe就是基因�?
   inModule = (moduleColors==module);
   modProbes = probes[inModule]; 
   ## 也是提取指定模块的基因名
   # Select the corresponding Topological Overlap
   modTOM = TOM[inModule, inModule];
   dimnames(modTOM) = list(modProbes, modProbes)
-  ## 模块对应的基因关系矩阵 
+  ## 模块对应的基因关系矩�? 
   cyt = exportNetworkToCytoscape(
     modTOM,
     edgeFile = paste("CytoscapeInput-edges-", paste(module, collapse="-"), ".txt", sep=""),
