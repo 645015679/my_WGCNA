@@ -74,8 +74,8 @@ if(T){
   dev.off()
 }
 
-## step3 
-
+## step3 构建加权共表达网络（Weight co-expression network)
+## 首先是一步法完成网络构建
 if(T){
   net = blockwiseModules(
     datExpr,
@@ -90,7 +90,73 @@ if(T){
   )
   table(net$colors) 
 }
+## 然后是分布法完成网络构建，仅供有探索精神的同学挑战。
 
+## 构建加权共表达网络分为两步：
+## 1. 计算邻近值，也是就是两个基因在不样品中表达量的表达相关系数(pearson correlation rho)，
+## 参考 2.b.2 in https://labs.genetics.ucla.edu/horvath/htdocs/CoexpressionNetwork/Rpackages/WGCNA/Tutorials/FemaleLiver-02-networkConstr-man.pdf
+## 2. 计算topology overlap similarity (TOM)。 WGCNA认为，只通过计算两个基因的表达相关系数构建共表达网络是不足够的。
+## 于是他们用TOM表示两个基因在网络结构上的相似性，即两个基因如果具有相似的邻近基因，这两个基因更倾向于有相互作用。
+## 参考 2.b.3 in https://labs.genetics.ucla.edu/horvath/htdocs/CoexpressionNetwork/Rpackages/WGCNA/Tutorials/FemaleLiver-02-networkConstr-man.pdf
+
+
+if(F){
+	#(1)网络构建 Co-expression similarity and adjacency 
+	adjacency = adjacency(datExpr, power = sft$powerEstimate) 
+	#(2) 邻近矩阵到拓扑矩阵的转换，Turn adjacency into topological overlap
+	TOM = TOMsimilarity(adjacency);
+	dissTOM = 1-TOM
+	# (3) 聚类拓扑矩阵 Call the hierarchical clustering function
+	geneTree = hclust(as.dist(dissTOM), method = "average");
+	# Plot the resulting clustering tree (dendrogram)
+	sizeGrWindow(12,9)
+	## 这个时候的geneTree与一步法的 net$dendrograms[[1]] 性质类似，但是还需要进行进一步处理
+	plot(geneTree, xlab="", sub="", main = "Gene clustering on TOM-based dissimilarity",
+		 labels = FALSE, hang = 0.04);
+	#(4) 聚类分支的修整 dynamicTreeCut 
+	# We like large modules, so we set the minimum module size relatively high:
+	minModuleSize = 30;
+	# Module identification using dynamic tree cut:
+	dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM,
+								deepSplit = 2, pamRespectsDendro = FALSE,
+								minClusterSize = minModuleSize);
+	table(dynamicMods)
+	#4. 绘画结果展示
+	# Convert numeric lables into colors
+	dynamicColors = labels2colors(dynamicMods)
+	table(dynamicColors)
+	# Plot the dendrogram and colors underneath
+	#sizeGrWindow(8,6)
+	plotDendroAndColors(geneTree, dynamicColors, "Dynamic Tree Cut",
+						dendroLabels = FALSE, hang = 0.03,
+						addGuide = TRUE, guideHang = 0.05,
+						main = "Gene dendrogram and module colors")
+	#5. 聚类结果相似模块的融合，Merging of modules whose expression profiles are very similar
+	#在聚类树中每一leaf是一个短线，代表一个基因，
+	#不同分之间靠的越近表示有高的共表达基因，将共表达极其相似的modules进行融合
+	# Calculate eigengenes
+	MEList = moduleEigengenes(datExpr, colors = dynamicColors)
+	MEs = MEList$eigengenes
+	# Calculate dissimilarity of module eigengenes
+	MEDiss = 1-cor(MEs);
+	# Cluster module eigengenes
+	METree = hclust(as.dist(MEDiss), method = "average");
+	# Plot the result
+	#sizeGrWindow(7, 6)
+	plot(METree, main = "Clustering of module eigengenes",
+		 xlab = "", sub = "")
+	#选择有75%相关性的进行融合
+	MEDissThres = 0.25
+	# Plot the cut line into the dendrogram
+	abline(h=MEDissThres, col = "red")
+	# Call an automatic merging function
+	merge = mergeCloseModules(datExpr, dynamicColors, cutHeight = MEDissThres, verbose = 3)
+	# The merged module colors
+	mergedColors = merge$colors;
+	# Eigengenes of the new merged modules:
+	mergedMEs = merge$newMEs
+	
+}
 
 ## step 4 
 if(T){
